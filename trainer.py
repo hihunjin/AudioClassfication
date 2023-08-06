@@ -222,7 +222,7 @@ def save_model(net, opt, loss, acc, steps, root, lr_scheduler=None, scaler=None)
 
 def train(args):
     if args.dataset == 'esc50':
-        args.data_path = r'../data/ESC/ESC-50'
+        args.data_path = r'/mnt/ebs/data/ESC-50-master'
         args.sampling_rate = 22050
         args.n_classes = 50
     elif args.dataset == 'audioset':

@@ -4,6 +4,8 @@ import torchaudio
 import os
 import glob
 import random
+import librosa
+from utils.io import load_wav
 from datasets.audio_augs import AudioAugs
 
 
@@ -37,8 +39,10 @@ class ESCDataset(torch.utils.data.Dataset):
         fname = self.audio_files[index]
         label = fname.split('/')[-2]
         label = self.label2idx[label]
-        audio, sampling_rate = torchaudio.load(fname)
-        audio.squeeze_()
+        # audio, sampling_rate = torchaudio.load(fname)  # audio.shape: torch.Size([1, 220500])
+        audio, sampling_rate = load_wav(fname)
+        audio = librosa.resample(audio, orig_sr=sampling_rate, target_sr=self.sampling_rate)
+        audio = torch.from_numpy(audio).type(torch.float32)
         audio = 0.95 * (audio / audio.__abs__().max()).float()
 
         assert("sampling rate of the file is not as configured in dataset, will cause slow fetch {}".format(sampling_rate != self.sampling_rate))
@@ -50,9 +54,8 @@ class ESCDataset(torch.utils.data.Dataset):
             audio = F.pad(
                 audio, (0, self.segment_length - audio.size(0)), "constant"
             ).data
-
         if self.transforms is not None:
-            audio = AudioAugs(self.transforms, sampling_rate, p=0.5)(audio)
+            audio = AudioAugs(self.transforms, self.sampling_rate, p=0.5)(audio)
 
         return audio.unsqueeze(0), label
 
