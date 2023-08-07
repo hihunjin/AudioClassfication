@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from utils.helper_funcs import accuracy, mAP
 from datasets.batch_augs import BatchAugs
-import logger
+import scripts.logger as logger
 
 
 def parse_args():
