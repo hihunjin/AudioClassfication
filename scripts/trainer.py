@@ -208,7 +208,7 @@ def save_model(net, opt, loss, acc, steps, root, lr_scheduler=None, scaler=None)
     chkpnt = {            
         'model_dict': net.state_dict(),
         'opt_dict': opt.state_dict(),
-        'steps': steps,            
+        'steps': steps,
     }
     if lr_scheduler is not None:
         chkpnt['lr_scheduler'] = lr_scheduler.state_dict()
@@ -216,7 +216,7 @@ def save_model(net, opt, loss, acc, steps, root, lr_scheduler=None, scaler=None)
         chkpnt['scaler'] = scaler.state_dict()
     torch.save(chkpnt, root / "chkpnt.pt")
     torch.save(net.state_dict(), root / "best_model.pt")
-    print(acc, loss, 'saved')
+    print("acc:", acc, "loss:", loss, f'saved at {root / "best_model.pt"}')
     return True    
 
 
@@ -589,7 +589,7 @@ def train(args):
             
             if steps % args.save_interval == 0:
                 ''' validate'''
-                net.eval()                
+                net.eval()
                 loss = 0
                 if args.multilabel:
                     labels = np.zeros((len(test_loader.dataset), args.n_classes)).astype(np.float32)

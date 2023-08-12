@@ -1,11 +1,14 @@
-import torch
-from torch.utils.data import DataLoader
-from pathlib import Path
-import argparse
 import yaml
-from utils.helper_funcs import accuracy, count_parameters, mAP, measure_inference_time
+import argparse
+from pathlib import Path
+
 import numpy as np
+import torch
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
+
+from utils.io import save_json
+from utils.helper_funcs import accuracy, count_parameters, mAP, measure_inference_time
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -13,6 +16,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--f_res", default=None, type=Path)
+    parser.add_argument("--add_noise", default=False, type=bool)
     args = parser.parse_args()
     return args
 
@@ -165,12 +169,12 @@ def inference_single_label(net, data_set, args):
     acc_av = accuracy(preds.detach(), labels.detach(), [1, ])[0]
 
     res = {
-        "acc": acc_av,
-        "preds": preds,
-        "labels": labels.view(-1),
-        "confusion_matrix": confusion_matrix
+        "acc": acc_av.item(),
+        "preds": preds.tolist(),
+        "labels": labels.view(-1).tolist(),
+        "confusion_matrix": confusion_matrix.tolist(),
     }
-    torch.save(res, args['f_res'] / "res.pt")
+    save_json(args['f_res'] / "res.json", res)
 
     print("acc:{}".format(np.round(acc_av*100)/100))
     print("cm:{}".format(confusion_matrix.diag().sum() / len(data_loader.dataset)))
@@ -221,4 +225,4 @@ def inference_multi_label(net, data_set, args):
 
 
 if __name__ == '__main__':
-    pass
+    run()
