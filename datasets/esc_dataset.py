@@ -5,7 +5,9 @@ import os
 import glob
 import random
 import librosa
+import pandas as pd
 from utils.io import load_wav
+
 from datasets.audio_augs import AudioAugs
 
 
@@ -20,7 +22,11 @@ class ESCDataset(torch.utils.data.Dataset):
                  ):
         self.sampling_rate = sampling_rate
         self.segment_length = segment_length
+        self.root = root
         fnames = glob.glob(root + "/**/*.wav")
+        self.df = pd.read_csv(os.path.join(
+            self.root, 'meta/esc50.csv'
+        ))
         self._get_labels(fnames)
         if mode == 'train':
             fnames = [f for f in fnames if int(os.path.basename(f).split('-')[0]) != fold_id]
@@ -33,11 +39,12 @@ class ESCDataset(torch.utils.data.Dataset):
         self.transforms = transforms
 
     def _get_labels(self, f_names):
-        self.labels = sorted(list(set([f.split('/')[-2] for f in f_names])))
+        self.labels = sorted(self.df["category"].unique().tolist())
+        # self.labels = sorted(list(set([f.split('/')[-2] for f in f_names])))
 
     def __getitem__(self, index):
         fname = self.audio_files[index]
-        label = fname.split('/')[-2]
+        label = self.df[self.df["filename"] == fname.split("/")[-1]]["category"].tolist()[0]
         label = self.label2idx[label]
         # audio, sampling_rate = torchaudio.load(fname)  # audio.shape: torch.Size([1, 220500])
         audio, sampling_rate = load_wav(fname)
