@@ -216,7 +216,7 @@ def save_model(net, opt, loss, acc, steps, root, lr_scheduler=None, scaler=None)
         chkpnt['scaler'] = scaler.state_dict()
     torch.save(chkpnt, root / "chkpnt.pt")
     torch.save(net.state_dict(), root / "best_model.pt")
-    print("acc:", acc, "loss:", loss, f'saved at {root / "best_model.pt"}')
+    print("acc:", acc, "loss:", loss, f'saved at {root / "chkpnt.pt"}')
     return True    
 
 
