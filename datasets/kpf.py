@@ -63,7 +63,7 @@ def main(page: int, save_directory: str):
             "level": val["level"],
             "time_interval": val["time_interval"],
         }
-    with open(os.path.join(save_directory, NEW_JSON_NAME), "w") as outfile:
+    with open(os.path.join(save_directory_page, NEW_JSON_NAME), "w") as outfile:
         json.dump(df_list, outfile, indent=4, sort_keys=True)
 
 
