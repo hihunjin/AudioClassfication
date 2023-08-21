@@ -92,6 +92,7 @@ def KpfDataset(
     num_pages: int,
     transforms=None,
     split: bool = False,
+    seed: int = 0,
 ):
     concat_dataset = ConcatDataset(
         [
@@ -109,8 +110,9 @@ def KpfDataset(
     if split is True:
         train_count = int(0.7 * len(concat_dataset))
         test_count = len(concat_dataset) - train_count
+        generator = torch.Generator().manual_seed(seed)
         train_dataset, test_dataset = random_split(
-            concat_dataset, [train_count, test_count]
+            concat_dataset, [train_count, test_count], generator
         )
         test_dataset.transforms = None
         return train_dataset, test_dataset
