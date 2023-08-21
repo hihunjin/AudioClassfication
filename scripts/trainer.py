@@ -14,54 +14,64 @@ import scripts.logger as logger
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    '''train'''
+    """train"""
     parser.add_argument("--max_lr", default=3e-4, type=float)
     parser.add_argument("--wd", default=1e-5, type=float)
     parser.add_argument("--batch_size", default=128, type=int)
     parser.add_argument("--run_name", default=None, type=Path)
-    parser.add_argument('--loss_type', default="label_smooth", type=str)
-    parser.add_argument('--n_epochs', default=None, type=int)
-    parser.add_argument('--epoch_mix', default=None, type=int)
-    parser.add_argument("--amp", action='store_true')
-    parser.add_argument("--filter_bias_and_bn", action='store_true', default=True)
+    parser.add_argument("--loss_type", default="label_smooth", type=str)
+    parser.add_argument("--n_epochs", default=None, type=int)
+    parser.add_argument("--epoch_mix", default=None, type=int)
+    parser.add_argument("--amp", action="store_true")
+    parser.add_argument("--filter_bias_and_bn", action="store_true", default=True)
     parser.add_argument("--ext_pretrained", default=None, type=str)
-    parser.add_argument("--multilabel", action='store_true')
-    parser.add_argument('--save_path', default=None, type=Path)
-    parser.add_argument('--load_path', default=None, type=Path)
-    parser.add_argument('--scheduler', default=None, type=str)
-    parser.add_argument('--augs_signal', nargs='+', type=str,
-                        default=['amp', 'neg', 'tshift', 'tmask', 'ampsegment', 'cycshift'])
-    parser.add_argument('--augs_noise', nargs='+', type=str,
-                        default=['awgn', 'abgn', 'apgn', 'argn', 'avgn', 'aun', 'phn', 'sine'])
-    parser.add_argument('--augs_mix', nargs='+', type=str, default=['mixup', 'timemix', 'freqmix', 'phmix'])
-    parser.add_argument('--mix_loss', default='bce', type=str)
-    parser.add_argument('--mix_ratio', default=1, type=float)
-    parser.add_argument('--ema', default=0.995, type=float)
-    parser.add_argument('--log_interval', default=100, type=int)
+    parser.add_argument("--multilabel", action="store_true")
+    parser.add_argument("--save_path", default=None, type=Path)
+    parser.add_argument("--load_path", default=None, type=Path)
+    parser.add_argument("--scheduler", default=None, type=str)
+    parser.add_argument(
+        "--augs_signal",
+        nargs="+",
+        type=str,
+        default=["amp", "neg", "tshift", "tmask", "ampsegment", "cycshift"],
+    )
+    parser.add_argument(
+        "--augs_noise",
+        nargs="+",
+        type=str,
+        default=["awgn", "abgn", "apgn", "argn", "avgn", "aun", "phn", "sine"],
+    )
+    parser.add_argument(
+        "--augs_mix", nargs="+", type=str, default=["mixup", "timemix", "freqmix", "phmix"]
+    )
+    parser.add_argument("--mix_loss", default="bce", type=str)
+    parser.add_argument("--mix_ratio", default=1, type=float)
+    parser.add_argument("--ema", default=0.995, type=float)
+    parser.add_argument("--log_interval", default=100, type=int)
     parser.add_argument("--kd_model", default=None, type=Path)
-    parser.add_argument("--use_bg", action='store_true', default=False)
-    parser.add_argument("--resume_training", action='store_true', default=False)
-    parser.add_argument("--use_balanced_sampler", action='store_true', default=False)
+    parser.add_argument("--use_bg", action="store_true", default=False)
+    parser.add_argument("--resume_training", action="store_true", default=False)
+    parser.add_argument("--use_balanced_sampler", action="store_true", default=False)
 
-    '''common'''
-    parser.add_argument('--local_rank', default=0, type=int)
-    parser.add_argument('--gpu_ids', nargs='+', default=[0])
-    parser.add_argument("--use_ddp", action='store_true')
-    parser.add_argument("--use_dp", action='store_true')
-    parser.add_argument('--save_interval', default=100, type=int)
-    parser.add_argument('--num_workers', default=8, type=int)
+    """common"""
+    parser.add_argument("--local_rank", default=0, type=int)
+    parser.add_argument("--gpu_ids", nargs="+", default=[0])
+    parser.add_argument("--use_ddp", action="store_true")
+    parser.add_argument("--use_dp", action="store_true")
+    parser.add_argument("--save_interval", default=100, type=int)
+    parser.add_argument("--num_workers", default=8, type=int)
 
-    '''data'''
-    parser.add_argument('--fold_id', default=1, type=int)
-    parser.add_argument("--data_subtype", default='balanced', type=str)
-    parser.add_argument('--seq_len', default=90112, type=int)
-    parser.add_argument('--dataset', default="urban8k", type=str)
-    '''net'''
-    parser.add_argument('--ds_factors', nargs='+', type=int, default=[4, 4, 4, 4])
-    parser.add_argument('--n_head', default=8, type=int)
-    parser.add_argument('--n_layers', default=4, type=int)
+    """data"""
+    parser.add_argument("--fold_id", default=1, type=int)
+    parser.add_argument("--data_subtype", default="balanced", type=str)
+    parser.add_argument("--seq_len", default=90112, type=int)
+    parser.add_argument("--dataset", default="urban8k", type=str)
+    """net"""
+    parser.add_argument("--ds_factors", nargs="+", type=int, default=[4, 4, 4, 4])
+    parser.add_argument("--n_head", default=8, type=int)
+    parser.add_argument("--n_layers", default=4, type=int)
     parser.add_argument("--emb_dim", default=128, type=int)
-    parser.add_argument("--model_type", default='SoundNetRaw', type=str)
+    parser.add_argument("--model_type", default="SoundNetRaw", type=str)
     parser.add_argument("--nf", default=16, type=int)
     parser.add_argument("--dim_feedforward", default=512, type=int)
 
@@ -77,16 +87,16 @@ def dummy_run(net, batch_sz, seq_len):
     with torch.no_grad():
         for k in range(10):
             _ = net(x)
-    t_batch = (time.time()-t_batch)/10
-    print("dummy succededd, avg_time_batch:{}ms".format(t_batch*1000))
+    t_batch = (time.time() - t_batch) / 10
+    print("dummy succededd, avg_time_batch:{}ms".format(t_batch * 1000))
     del x
     return True
 
 
 def check_args(args):
-    if args.augs_noise[0] == 'none':
+    if args.augs_noise[0] == "none":
         args.augs_noise = []
-    if args.augs_mix[0] == 'none':
+    if args.augs_mix[0] == "none":
         args.augs_mix = []
     return args
 
@@ -95,58 +105,78 @@ def create_dataset(args):
     ##################################################################################
     # ESC-50
     ##################################################################################
-    if args.dataset == 'esc50':
+    if args.dataset == "esc50":
         from datasets.esc_dataset import ESCDataset as SoundDataset
+
         train_set = SoundDataset(
             args.data_path,
-            mode='train',
+            mode="train",
             segment_length=args.seq_len,
             sampling_rate=args.sampling_rate,
             transforms=args.augs_signal + args.augs_noise,
-            fold_id=args.fold_id
+            fold_id=args.fold_id,
         )
 
         test_set = SoundDataset(
             args.data_path,
-            mode='test',
+            mode="test",
             segment_length=args.seq_len,
             sampling_rate=args.sampling_rate,
             transforms=None,
-            fold_id=args.fold_id
+            fold_id=args.fold_id,
+        )
+
+    ##################################################################################
+    # kpf
+    ##################################################################################
+    if args.dataset == "kpf":
+        from datasets.kpf_dataset import KpfDataset as SoundDataset
+
+        # TODO
+        args.num_pages = 70
+        train_set, test_set = SoundDataset(
+            args.data_path,
+            segment_length=args.seq_len,
+            sampling_rate=args.sampling_rate,
+            n_classes=args.n_classes,
+            num_pages=args.num_pages,
+            transforms=args.augs_signal + args.augs_noise,
+            split=True,
         )
 
     ##################################################################################
     # SpeechCommands V2-35
     ##################################################################################
-    elif args.dataset == 'speechcommands':
+    elif args.dataset == "speechcommands":
         from datasets.speechcommand_dataset import SpeechCommandsDataset as SoundDataset
+
         train_set = SoundDataset(
             args.data_path,
-            mode='train',
+            mode="train",
             segment_length=args.seq_len,
             sampling_rate=args.sampling_rate,
             transforms=args.augs_signal + args.augs_noise,
-            use_background=args.use_bg
+            use_background=args.use_bg,
         )
 
         test_set = SoundDataset(
             args.data_path,
-            mode='val',
+            mode="val",
             segment_length=args.seq_len,
             sampling_rate=args.sampling_rate,
             transforms=None,
-            use_background=False
+            use_background=False,
         )
 
     ##################################################################################
     # AudioSet
     ##################################################################################
-    elif args.dataset == 'audioset':
+    elif args.dataset == "audioset":
         from datasets.audioset_dataset import AudioSetDataset as SoundDataset
 
         train_set = SoundDataset(
             args.data_path,
-            'train',
+            "train",
             data_subtype=args.data_subtype,
             segment_length=args.seq_len,
             sampling_rate=args.sampling_rate,
@@ -155,7 +185,7 @@ def create_dataset(args):
 
         test_set = SoundDataset(
             args.data_path,
-            'test',
+            "test",
             data_subtype=None,
             segment_length=args.seq_len,
             sampling_rate=args.sampling_rate,
@@ -165,12 +195,12 @@ def create_dataset(args):
     ##################################################################################
     # Urban8K
     ##################################################################################
-    elif args.dataset == 'urban8k':
+    elif args.dataset == "urban8k":
         from datasets.urban8K_dataset import Urban8KDataset as SoundDataset
 
         train_set = SoundDataset(
             args.data_path,
-            'train',
+            "train",
             segment_length=args.seq_len,
             sampling_rate=args.sampling_rate,
             transforms=args.augs_signal + args.augs_noise,
@@ -179,11 +209,11 @@ def create_dataset(args):
 
         test_set = SoundDataset(
             args.data_path,
-            'test',
+            "test",
             segment_length=args.seq_len,
             sampling_rate=args.sampling_rate,
             transforms=None,
-            fold_id=args.fold_id
+            fold_id=args.fold_id,
         )
 
     return train_set, test_set
@@ -191,50 +221,56 @@ def create_dataset(args):
 
 def create_model(args):
     from modules.soundnet import SoundNetRaw as SoundNet
+
     ds_fac = np.prod(np.array(args.ds_factors)) * 4
-    net = SoundNet(nf=args.nf,
-                   dim_feedforward=args.dim_feedforward,
-                   clip_length=args.seq_len // ds_fac,
-                   embed_dim=args.emb_dim,
-                   n_layers=args.n_layers,
-                   nhead=args.n_head,
-                   n_classes=args.n_classes,
-                   factors=args.ds_factors,
-                   )
+    net = SoundNet(
+        nf=args.nf,
+        dim_feedforward=args.dim_feedforward,
+        clip_length=args.seq_len // ds_fac,
+        embed_dim=args.emb_dim,
+        n_layers=args.n_layers,
+        nhead=args.n_head,
+        n_classes=args.n_classes,
+        factors=args.ds_factors,
+    )
     return net
 
 
-def save_model(net, opt, loss, acc, steps, root, lr_scheduler=None, scaler=None):    
-    chkpnt = {            
-        'model_dict': net.state_dict(),
-        'opt_dict': opt.state_dict(),
-        'steps': steps,
+def save_model(net, opt, loss, acc, steps, root, lr_scheduler=None, scaler=None):
+    chkpnt = {
+        "model_dict": net.state_dict(),
+        "opt_dict": opt.state_dict(),
+        "steps": steps,
     }
     if lr_scheduler is not None:
-        chkpnt['lr_scheduler'] = lr_scheduler.state_dict()
+        chkpnt["lr_scheduler"] = lr_scheduler.state_dict()
     if scaler is not None:
-        chkpnt['scaler'] = scaler.state_dict()
+        chkpnt["scaler"] = scaler.state_dict()
     torch.save(chkpnt, root / "chkpnt.pt")
     torch.save(net.state_dict(), root / "best_model.pt")
     print("acc:", acc, "loss:", loss, f'saved at {root / "chkpnt.pt"}')
-    return True    
+    return True
 
 
 def train(args):
-    if args.dataset == 'esc50':
-        args.data_path = r'/mnt/ebs/data/ESC-50-master'
+    if args.dataset == "esc50":
+        args.data_path = r"/mnt/ebs/data/ESC-50-master"
         args.sampling_rate = 22050
         args.n_classes = 50
-    elif args.dataset == 'audioset':
-        args.data_path = r'../data/audioset'
+    elif args.dataset == "esc50":
+        args.data_path = r"/mnt/ebs/data/kpf"
+        args.sampling_rate = 22050
+        args.n_classes = 50
+    elif args.dataset == "audioset":
+        args.data_path = r"../data/audioset"
         args.sampling_rate = 22050
         args.n_classes = 527
-    elif args.dataset == 'speechcommands':
-        args.data_path = r'../data/SpeechCommands/speech_commands_v0.02'
+    elif args.dataset == "speechcommands":
+        args.data_path = r"../data/SpeechCommands/speech_commands_v0.02"
         args.sampling_rate = 16000
         args.n_classes = 35
-    elif args.dataset == 'urban8k':
-        args.data_path = r'../../datasets/UrbanSound8K'
+    elif args.dataset == "urban8k":
+        args.data_path = r"../../datasets/UrbanSound8K"
         args.sampling_rate = 22050
         args.n_classes = 10
     else:
@@ -247,44 +283,55 @@ def train(args):
 
     if args.multilabel:
         from utils.helper_funcs import collate_fn
+
         if args.use_balanced_sampler:
-            sampler = torch.utils.data.sampler.WeightedRandomSampler(train_set.samples_weight, train_set.__len__(), replacement=True)
-            train_loader = DataLoader(train_set, batch_size=args.batch_size,
-                                      num_workers=args.num_workers,
-                                      pin_memory=True,
-                                      shuffle=False,
-                                      drop_last=True,
-                                      collate_fn=collate_fn,
-                                      sampler=sampler
-                                      )
+            sampler = torch.utils.data.sampler.WeightedRandomSampler(
+                train_set.samples_weight, train_set.__len__(), replacement=True
+            )
+            train_loader = DataLoader(
+                train_set,
+                batch_size=args.batch_size,
+                num_workers=args.num_workers,
+                pin_memory=True,
+                shuffle=False,
+                drop_last=True,
+                collate_fn=collate_fn,
+                sampler=sampler,
+            )
         else:
-            train_loader = DataLoader(train_set, batch_size=args.batch_size,
-                                      num_workers=args.num_workers,
-                                      pin_memory=True,
-                                      shuffle=True,
-                                      drop_last=True,
-                                      collate_fn=collate_fn,
-                                      )
-        test_loader = DataLoader(test_set, batch_size=args.batch_size,
-                                 num_workers=args.num_workers,
-                                 pin_memory=True,
-                                 shuffle=False,
-                                 collate_fn=collate_fn,
-                                 )
+            train_loader = DataLoader(
+                train_set,
+                batch_size=args.batch_size,
+                num_workers=args.num_workers,
+                pin_memory=True,
+                shuffle=True,
+                drop_last=True,
+                collate_fn=collate_fn,
+            )
+        test_loader = DataLoader(
+            test_set,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            pin_memory=True,
+            shuffle=False,
+            collate_fn=collate_fn,
+        )
     else:
-        train_loader = DataLoader(train_set,
-                                  batch_size=args.batch_size,
-                                  num_workers=args.num_workers,
-                                  pin_memory=True,
-                                  shuffle=False if train_set is None else True,
-                                  drop_last=True,
-                                  )
-        test_loader = DataLoader(test_set,
-                                 batch_size=args.batch_size,
-                                 num_workers=args.num_workers,
-                                 pin_memory=True,
-                                 shuffle=False,
-                                 )
+        train_loader = DataLoader(
+            train_set,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            pin_memory=True,
+            shuffle=False if train_set is None else True,
+            drop_last=True,
+        )
+        test_loader = DataLoader(
+            test_set,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            pin_memory=True,
+            shuffle=False,
+        )
 
     #####################
     # Network           #
@@ -292,21 +339,22 @@ def train(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     ba_params = {
-        'seq_len': args.seq_len,
-        'fs': args.sampling_rate,
-        'device': device,
-        'augs': args.augs_mix,
-        'mix_ratio': args.mix_ratio,
-        'batch_sz': args.local_rank,
-        'epoch_mix': args.epoch_mix,
-        'resample_factors': [0.8, 0.9, 1.1, 1.2],
-        'multilabel': True if args.multilabel else False,
-        'mix_loss': args.mix_loss
+        "seq_len": args.seq_len,
+        "fs": args.sampling_rate,
+        "device": device,
+        "augs": args.augs_mix,
+        "mix_ratio": args.mix_ratio,
+        "batch_sz": args.local_rank,
+        "epoch_mix": args.epoch_mix,
+        "resample_factors": [0.8, 0.9, 1.1, 1.2],
+        "multilabel": True if args.multilabel else False,
+        "mix_loss": args.mix_loss,
     }
     batch_augs = BatchAugs(ba_params)
 
     if args.amp:
         from torch.cuda.amp import GradScaler
+
         scaler = GradScaler(init_scale=2**10)
         eps = 1e-4
     else:
@@ -322,8 +370,11 @@ def train(args):
     # ext pretrainining           #
     ####################################
     if args.ext_pretrained is not None:
-        pre = ''
-        print("loading model for pretraining ", (Path(pre + args.ext_pretrained) / Path("model.pt")).is_file())
+        pre = ""
+        print(
+            "loading model for pretraining ",
+            (Path(pre + args.ext_pretrained) / Path("model.pt")).is_file(),
+        )
         net_ext = torch.load(Path(pre + args.ext_pretrained) / Path("model.pt"))
         with (args.ext_pretrained / Path("args.yml")).open() as f:
             args_pretrained = yaml.load(f, Loader=yaml.Loader)
@@ -332,31 +383,35 @@ def train(args):
         except:
             pass
         from modules.soundnet import SoundNetRaw as SoundNet
-        ds_fac = np.prod(np.array(args_pretrained['ds_factors'])) * 4
+
+        ds_fac = np.prod(np.array(args_pretrained["ds_factors"])) * 4
         net = SoundNet(
-            nf=args['nf'],
-            dim_feedforward=args['dim_feedforward'],
-            clip_length=args['seq_len'] // ds_fac,
-            embed_dim=args['emb_dim'],
-            n_layers=args['n_layers'],
-            nhead=args['n_head'],
-            n_classes=args['n_classes'],
-            factors=args['ds_factors'],
-             )
+            nf=args["nf"],
+            dim_feedforward=args["dim_feedforward"],
+            clip_length=args["seq_len"] // ds_fac,
+            embed_dim=args["emb_dim"],
+            n_layers=args["n_layers"],
+            nhead=args["n_head"],
+            n_classes=args["n_classes"],
+            factors=args["ds_factors"],
+        )
         try:
             net.load_state_dict(net_ext, strict=True)
         except:
-            '''remove module. prefix in case of DataParallel module'''
+            """remove module. prefix in case of DataParallel module"""
             from collections import OrderedDict
+
             state_dict = OrderedDict()
             for k, v in net_ext.items():
-                name = k.replace('module.', '')
+                name = k.replace("module.", "")
                 state_dict[name] = v
             else:
                 net.load_state_dict(state_dict, strict=True)
         del net_ext
         nn = args.seq_len // (np.prod(np.array(args.ds_factors)) * 4) + 1
-        net.tf.pos_embed.data = F.interpolate(net.tf.pos_embed.data.transpose(2, 1), size=nn).transpose(2, 1)
+        net.tf.pos_embed.data = F.interpolate(net.tf.pos_embed.data.transpose(2, 1), size=nn).transpose(
+            2, 1
+        )
         net.tf.fc = torch.nn.Linear(args.emb_dim, args.n_classes)
         net.to(device)
 
@@ -369,29 +424,31 @@ def train(args):
         except:
             pass
         from modules.soundnet import SoundNetRaw as SoundNet
+
         net_t = SoundNet(
-            nf=args_t['nf'],
-            dim_feedforward=args_t['dim_feedforward'],
-            clip_length=args_t['seq_len'] // ds_fac,
-            embed_dim=args_t['emb_dim'],
-            n_layers=args_t['n_layers'],
-            nhead=args_t['n_head'],
-            n_classes=args_t['n_classes'],
-            factors=args_t['ds_factors']
+            nf=args_t["nf"],
+            dim_feedforward=args_t["dim_feedforward"],
+            clip_length=args_t["seq_len"] // ds_fac,
+            embed_dim=args_t["emb_dim"],
+            n_layers=args_t["n_layers"],
+            nhead=args_t["n_head"],
+            n_classes=args_t["n_classes"],
+            factors=args_t["ds_factors"],
         )
-        if (args.kd_model / Path('model.pt')).is_file():
-            teacher = torch.load(args.kd_model / Path('model.pt'), map_location=torch.device(device))
+        if (args.kd_model / Path("model.pt")).is_file():
+            teacher = torch.load(args.kd_model / Path("model.pt"), map_location=torch.device(device))
         else:
-            chkpnt = torch.load(args.kd_model / Path('chkpnt.pt'), map_location=torch.device(device))
-            teacher = chkpnt['model_dict']
+            chkpnt = torch.load(args.kd_model / Path("chkpnt.pt"), map_location=torch.device(device))
+            teacher = chkpnt["model_dict"]
         try:
             net_t.load_state_dict(teacher, strict=True)
         except:
-            '''remove module. prefix in case of DataParallel module'''
+            """remove module. prefix in case of DataParallel module"""
             from collections import OrderedDict
+
             state_dict = OrderedDict()
             for k, v in teacher.items():
-                name = k.replace('module.', '')
+                name = k.replace("module.", "")
                 state_dict[name] = v
             net_t.load_state_dict(state_dict, strict=True)
         net_t.eval()
@@ -410,26 +467,24 @@ def train(args):
     #####################
     if args.filter_bias_and_bn:
         from utils.helper_funcs import add_weight_decay
+
         parameters = add_weight_decay(net, args.wd)
     else:
         parameters = net.parameters()
 
-    opt = torch.optim.AdamW(parameters,
-                            lr=args.max_lr,
-                            betas=[0.9, 0.99],
-                            weight_decay=0,
-                            eps=eps)
+    opt = torch.optim.AdamW(parameters, lr=args.max_lr, betas=[0.9, 0.99], weight_decay=0, eps=eps)
 
-
-    lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(opt,
-                                                       max_lr=args.max_lr,
-                                                       steps_per_epoch=len(train_loader),
-                                                       epochs=args.n_epochs,
-                                                       pct_start=0.1,
-                                                       )
+    lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        opt,
+        max_lr=args.max_lr,
+        steps_per_epoch=len(train_loader),
+        epochs=args.n_epochs,
+        pct_start=0.1,
+    )
 
     if args.ema:
         from modules.ema import ModelEma as EMA
+
         ema = EMA(net, decay_per_epoch=args.ema)
         epochs_from_last_reset = 0
         decay_per_epoch_orig = args.ema
@@ -439,17 +494,19 @@ def train(args):
     #####################
     if args.loss_type == "label_smooth":
         from modules.losses import LabelSmoothCrossEntropyLoss
-        criterion = LabelSmoothCrossEntropyLoss(smoothing=0.1, reduction='sum').to(device)
+
+        criterion = LabelSmoothCrossEntropyLoss(smoothing=0.1, reduction="sum").to(device)
 
     elif args.loss_type == "cross_entropy":
-        criterion = torch.nn.CrossEntropyLoss(reduction='sum').to(device)
+        criterion = torch.nn.CrossEntropyLoss(reduction="sum").to(device)
 
     elif args.loss_type == "focal":
         from modules.losses import FocalLoss
+
         criterion = FocalLoss().to(device)
 
-    elif args.loss_type == 'bce':
-        criterion = torch.nn.BCEWithLogitsLoss(reduction='sum').to(device)
+    elif args.loss_type == "bce":
+        criterion = torch.nn.BCEWithLogitsLoss(reduction="sum").to(device)
 
     else:
         raise ValueError
@@ -468,42 +525,43 @@ def train(args):
 
     #####################
     # resume training   #
-    #####################    
+    #####################
     steps = 0
     if load_root and load_root.exists():
         chkpnt = torch.load(load_root / "chkpnt.pt")
         try:
-            net.load_state_dict(chkpnt['model_dict'], strict=True)
+            net.load_state_dict(chkpnt["model_dict"], strict=True)
         except:
-            '''remove module. prefix in case of DataParallel module'''
+            """remove module. prefix in case of DataParallel module"""
             from collections import OrderedDict
+
             state_dict = OrderedDict()
-            for k, v in chkpnt['model_dict'].items():
-                name = k.replace('module.', '')
+            for k, v in chkpnt["model_dict"].items():
+                name = k.replace("module.", "")
                 state_dict[name] = v
             net.load_state_dict(state_dict, strict=True)
             del state_dict
         if args.resume_training:
-            opt.load_state_dict(chkpnt['opt_dict'])
-            if scaler is chkpnt.keys() and chkpnt['scaler'] is not None:
+            opt.load_state_dict(chkpnt["opt_dict"])
+            if scaler is chkpnt.keys() and chkpnt["scaler"] is not None:
                 scaler.load_state_dict(chkpnt["scaler"])
-            if lr_scheduler is chkpnt.keys() and chkpnt['lr_scheduler'] is not None:
-                lr_scheduler.load_state_dict(chkpnt['lr_scheduler'])
-            steps = chkpnt['steps'] if 'steps' in chkpnt.keys() else 0        
+            if lr_scheduler is chkpnt.keys() and chkpnt["lr_scheduler"] is not None:
+                lr_scheduler.load_state_dict(chkpnt["lr_scheduler"])
+            steps = chkpnt["steps"] if "steps" in chkpnt.keys() else 0
 
-        print('checkpoints loaded')
-    else:                
-        steps = 0        
+        print("checkpoints loaded")
+    else:
+        steps = 0
 
     # enable cudnn autotuner to speed up training
     torch.backends.cudnn.benchmark = True
 
     dummy_run(net, args.batch_size, args.seq_len)
-    net.train()    
+    net.train()
     skip_scheduler = False
     for epoch in range(1, args.n_epochs + 1):
         if args.use_ddp:
-            sampler.set_epoch(epoch)        
+            sampler.set_epoch(epoch)
 
         metric_logger = logger.MetricLogger(delimiter="  ")
         metric_logger.add_meter("lr", logger.SmoothedValue(window_size=1, fmt="{value:.6f}"))
@@ -518,7 +576,9 @@ def train(args):
         # set 'decay_per_step' for the eooch
         ema.set_decay_per_step(len(train_loader))
 
-        for iterno, (x, y) in  enumerate(metric_logger.log_every(train_loader, args.log_interval, header)):
+        for iterno, (x, y) in enumerate(
+            metric_logger.log_every(train_loader, args.log_interval, header)
+        ):
             t_batch = time.time()
             x = x.to(device)
             if args.multilabel:
@@ -530,8 +590,9 @@ def train(args):
             with torch.cuda.amp.autocast(enabled=scaler is not None):
                 pred = net(x)
                 if is_mixed:
-                    loss_cls = batch_augs.mix_loss(pred, targets, n_classes=args.n_classes,
-                                                   pred_one_hot=args.multilabel)
+                    loss_cls = batch_augs.mix_loss(
+                        pred, targets, n_classes=args.n_classes, pred_one_hot=args.multilabel
+                    )
                 else:
                     loss_cls = criterion(pred, y)
 
@@ -540,9 +601,13 @@ def train(args):
                     with torch.no_grad():
                         pred_t = net_t(x)
                     if args.multilabel:
-                        loss_cls += F.kl_div(F.logsigmoid(pred), torch.sigmoid(pred_t), reduction='batchmean')
+                        loss_cls += F.kl_div(
+                            F.logsigmoid(pred), torch.sigmoid(pred_t), reduction="batchmean"
+                        )
                     else:
-                        loss_cls += F.kl_div(pred.log_softmax(-1), pred_t.softmax(-1), reduction='batchmean')
+                        loss_cls += F.kl_div(
+                            pred.log_softmax(-1), pred_t.softmax(-1), reduction="batchmean"
+                        )
             ###################
             # Train Generator #
             ###################
@@ -562,7 +627,6 @@ def train(args):
             if args.ema:
                 ema.update(net, steps)
 
-
             if not skip_scheduler:
                 lr_scheduler.step()
 
@@ -571,9 +635,9 @@ def train(args):
                 acc = acc.item()
             else:
                 acc = mAP(y.detach().cpu().numpy(), torch.sigmoid(pred).detach().cpu().numpy())
-            
+
             metric_logger.update(acc=acc)
-            metric_logger.update(loss=loss_cls.item())            
+            metric_logger.update(loss=loss_cls.item())
             metric_logger.update(lr=opt.param_groups[0]["lr"])
 
             ######################
@@ -586,9 +650,9 @@ def train(args):
                     writer.add_scalar("train/lr", lr_scheduler.get_last_lr()[0], steps)
 
             steps += 1
-            
+
             if steps % args.save_interval == 0:
-                ''' validate'''
+                """validate"""
                 net.eval()
                 loss = 0
                 if args.multilabel:
@@ -602,7 +666,10 @@ def train(args):
                     for i, (x, y) in enumerate(test_loader):
                         x = x.to(device)
                         if args.multilabel:
-                            y = [F.one_hot(torch.Tensor(y_i).long(), args.n_classes).sum(dim=0).float() for y_i in y]
+                            y = [
+                                F.one_hot(torch.Tensor(y_i).long(), args.n_classes).sum(dim=0).float()
+                                for y_i in y
+                            ]
                             y = torch.stack(y, dim=0).contiguous().to(device)
                             y = y.to(device)
                             pred = net(x)
@@ -616,24 +683,30 @@ def train(args):
                             pred = net(x)
                             _, y_est = torch.max(pred, 1)
                             loss += F.cross_entropy(pred, y).item()
-                            acc += accuracy(pred.detach().data, y.detach().data, topk=[1, ])[0].item()
+                            acc += accuracy(
+                                pred.detach().data,
+                                y.detach().data,
+                                topk=[
+                                    1,
+                                ],
+                            )[0].item()
                             for t, p in zip(y.view(-1), y_est.view(-1)):
                                 cm[t.long(), p.long()] += 1
                     loss /= len(test_loader)
 
                     if args.multilabel:
                         acc = mAP(labels, preds)
-                    else:                        
-                        acc = 100*np.diag(cm).sum()/ len(test_loader.dataset)
+                    else:
+                        acc = 100 * np.diag(cm).sum() / len(test_loader.dataset)
 
                 metric_logger.update(loss_test=loss)
                 metric_logger.update(acc_test=acc)
-                
+
                 writer.add_scalar("test/acc", acc, steps)
                 writer.add_scalar("test/ce", loss, steps)
 
                 save_model(net, opt, loss, acc, steps, root, lr_scheduler=lr_scheduler, scaler=scaler)
-                
+
                 net.train()
 
 
