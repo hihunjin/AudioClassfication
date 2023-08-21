@@ -81,7 +81,7 @@ class KpfDatasetPage(Dataset):
         if self.transforms is not None:
             audio = AudioAugs(self.transforms, self.sampling_rate, p=0.5)(audio)
 
-        return audio.unsqueeze(0), row
+        return audio.unsqueeze(0), row.to_dict()
 
 
 def KpfDataset(

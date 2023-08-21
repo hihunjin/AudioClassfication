@@ -66,7 +66,10 @@ def parse_args():
     parser.add_argument("--data_subtype", default="balanced", type=str)
     parser.add_argument("--seq_len", default=90112, type=int)
     parser.add_argument("--dataset", default="urban8k", type=str)
+    parser.add_argument("--num_pages", default=70, type=int)
     """net"""
+    parser.add_argument("--task", default="level", type=str)
+    parser.add_argument("--n_classes", default=8, type=int)
     parser.add_argument("--ds_factors", nargs="+", type=int, default=[4, 4, 4, 4])
     parser.add_argument("--n_head", default=8, type=int)
     parser.add_argument("--n_layers", default=4, type=int)
@@ -132,8 +135,6 @@ def create_dataset(args):
     if args.dataset == "kpf":
         from datasets.kpf_dataset import KpfDataset as SoundDataset
 
-        # TODO
-        args.num_pages = 70
         train_set, test_set = SoundDataset(
             args.data_path,
             segment_length=args.seq_len,
@@ -257,10 +258,9 @@ def train(args):
         args.data_path = r"/mnt/ebs/data/ESC-50-master"
         args.sampling_rate = 22050
         args.n_classes = 50
-    elif args.dataset == "esc50":
+    elif args.dataset == "kpf":
         args.data_path = r"/mnt/ebs/data/kpf"
         args.sampling_rate = 22050
-        args.n_classes = 50
     elif args.dataset == "audioset":
         args.data_path = r"../data/audioset"
         args.sampling_rate = 22050
@@ -317,12 +317,15 @@ def train(args):
             collate_fn=collate_fn,
         )
     else:
+        from utils.helper_funcs import collate_fn_keep_dict
+        
         train_loader = DataLoader(
             train_set,
             batch_size=args.batch_size,
             num_workers=args.num_workers,
             pin_memory=True,
             shuffle=False if train_set is None else True,
+            collate_fn=collate_fn_keep_dict,
             drop_last=True,
         )
         test_loader = DataLoader(
@@ -331,6 +334,7 @@ def train(args):
             num_workers=args.num_workers,
             pin_memory=True,
             shuffle=False,
+            collate_fn=collate_fn_keep_dict,
         )
 
     #####################
@@ -559,6 +563,15 @@ def train(args):
     dummy_run(net, args.batch_size, args.seq_len)
     net.train()
     skip_scheduler = False
+    def get_target(y, args: argparse.ArgumentParser):
+        if args.dataset == "kpf":
+            if args.task == "level":
+                # TODO
+                return (torch.Tensor(list(map(int, y["level"]))) - 1).type(torch.int64)
+            elif args.task == "fmso":
+                return torch.Tensor(y["fmso"]).float()
+        else:
+            return y
     for epoch in range(1, args.n_epochs + 1):
         if args.use_ddp:
             sampler.set_epoch(epoch)
@@ -581,6 +594,7 @@ def train(args):
         ):
             t_batch = time.time()
             x = x.to(device)
+            y = get_target(y, args)
             if args.multilabel:
                 y = [F.one_hot(torch.Tensor(y_i).long(), args.n_classes).sum(dim=0).float() for y_i in y]
                 y = torch.stack(y, dim=0).contiguous().to(device)
@@ -665,6 +679,7 @@ def train(args):
                     acc = 0
                     for i, (x, y) in enumerate(test_loader):
                         x = x.to(device)
+                        y = get_target(y, args)
                         if args.multilabel:
                             y = [
                                 F.one_hot(torch.Tensor(y_i).long(), args.n_classes).sum(dim=0).float()

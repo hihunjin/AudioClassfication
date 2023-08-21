@@ -85,6 +85,19 @@ def collate_fn(batch):
     x = torch.stack(x, dim=0).contiguous()
     return (x, y)
 
+def collate_fn_keep_dict(batch):
+    if isinstance(batch[0][1], dict):
+        x = [item[0] for item in batch]
+        x = torch.stack(x, dim=0).contiguous()
+        y = {
+            key: [item[1][key] for item in batch]
+            for key in batch[0][1].keys()
+        }
+        return (x, y)
+    else:
+        from torch.utils.data.dataloader import default_collate
+        return default_collate(batch)
+
 def files_to_list(filename):
     """
     Takes a text file of filenames and makes a list of filenames
