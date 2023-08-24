@@ -563,13 +563,23 @@ def train(args):
     dummy_run(net, args.batch_size, args.seq_len)
     net.train()
     skip_scheduler = False
+    from utils.label_converter import LabelConverter
+
+    converter = LabelConverter(task=args.task)
     def get_target(y, args: argparse.ArgumentParser):
         if args.dataset == "kpf":
             if args.task == "level":
                 # TODO
                 return (torch.Tensor(list(map(int, y["level"]))) - 1).type(torch.int64)
             elif args.task == "fmso":
-                return torch.Tensor(y["fmso"]).float()
+                return torch.Tensor(
+                    list(
+                        map(
+                            converter.convert_label_to_model_output,
+                            y["fmso"],
+                        )
+                    )
+                ).type(torch.int64)
         else:
             return y
     for epoch in range(1, args.n_epochs + 1):
