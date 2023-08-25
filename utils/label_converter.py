@@ -2,7 +2,7 @@ from typing import Union
 
 
 class LabelConverter:
-    fmso_to_model_output = {"LF": 0, "LM": 1, "LS": 2, "LO": 3, "HF": 4, "HM": 5, "HS": 6, "HO": 7}
+    fmso_to_model_output = {"LF": 0, "LM": 1, "LS": 2, "LO": 3, "HF": 4, "HM": 5, "HS": 6, "HO": 7, "RP": 0}
 
     def __init__(self, task: str = "level"):
         assert task in [

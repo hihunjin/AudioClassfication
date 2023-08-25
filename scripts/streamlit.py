@@ -40,7 +40,8 @@ def infer(audios: torch.Tensor, net: nn.Module) -> np.ndarray:
     audios.to(device)
 
     print("audios.mean(), audios.std()", audios.mean().item(), audios.std().item())
-    pred = net(audios)
+    with torch.inference_mode():
+        pred = net(audios)
     # pred = torch.rand(audios.size(0), 8)
     y_est = torch.max(pred, 1)[1]
     print("y_est", y_est)
@@ -56,7 +57,9 @@ def smoothing(outputs, alpha):
 def display_outputs(outputs, audio_length_seconds, is_half: bool):
     import matplotlib.pyplot as plt
 
-    outputs = smoothing(outputs, 1.2)
+    print("before smoothing", outputs)
+    outputs = smoothing(outputs, 0.12)
+    print("after smoothing", outputs)
     fig = plt.figure()
     step = seq_len / SAMPLING_RATE
     plt.xlim(0, audio_length_seconds)
