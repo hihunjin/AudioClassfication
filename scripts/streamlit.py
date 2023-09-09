@@ -21,6 +21,10 @@ SAMPLING_RATE = 22050
 seq_len = 114688
 device = "cpu"
 yaml_dir = "/mnt/ebs/dev/AudioClassfication/outputs/kpf/kpf"
+from utils.label_converter import LabelConverter
+
+level_converter = LabelConverter(task="level")
+fmso_converter = LabelConverter(task="fmso")
 
 
 def crop_audio(audio):
@@ -35,7 +39,7 @@ def output_to_target(y_est):
     return y_est + 1
 
 
-def infer(audios: torch.Tensor, net: nn.Module) -> np.ndarray:
+def infer(audios: torch.Tensor, net: nn.Module, task: str = "level") -> np.ndarray:
     audios = audios.unsqueeze(1)
     audios.to(device)
 
@@ -45,21 +49,21 @@ def infer(audios: torch.Tensor, net: nn.Module) -> np.ndarray:
     # pred = torch.rand(audios.size(0), 8)
     y_est = torch.max(pred, 1)[1]
     print("y_est", y_est)
-    target = output_to_target(y_est)
+    target = output_to_target(y_est)  # XXX
     return target.cpu()
 
 
 def smoothing(outputs, alpha):
     return gaussian_filter1d(outputs, alpha)
-    
 
 
-def display_outputs(outputs, audio_length_seconds, is_half: bool):
+def display_outputs(outputs, audio_length_seconds, is_half: bool, task: str = "level"):
     import matplotlib.pyplot as plt
 
-    print("before smoothing", outputs)
-    outputs = smoothing(outputs, 0.12)
-    print("after smoothing", outputs)
+    if task == "level":
+        print("before smoothing", outputs)
+        outputs = smoothing(outputs, 0.12)
+        print("after smoothing", outputs)
     fig = plt.figure()
     step = seq_len / SAMPLING_RATE
     plt.xlim(0, audio_length_seconds)
@@ -78,10 +82,16 @@ def display_outputs(outputs, audio_length_seconds, is_half: bool):
         marker="_",
         s=SAMPLING_RATE // (len(outputs) - 1),
     )
+    if task == "fmso":
+        plt.yticks(np.arange(1, 9), list(fmso_converter.fmso_to_model_output.keys())[:8])
     return fig
 
 
-def parse_args(yaml_dir: str = yaml_dir, add_noise: bool = False):
+def parse_args(task: str = "level", yaml_dir: str = yaml_dir, add_noise: bool = False):
+    if task == "level":
+        yaml_dir = "/mnt/ebs/dev/AudioClassfication/outputs/kpf/kpf"
+    else:
+        yaml_dir = "/mnt/ebs/dev/AudioClassfication/outputs/kpf/fmso"
     yaml_dir = Path(yaml_dir)
     with (yaml_dir / Path("args.yml")).open() as f:
         args = yaml.load(f, Loader=yaml.Loader)
@@ -105,8 +115,8 @@ def parse_args(yaml_dir: str = yaml_dir, add_noise: bool = False):
     return args
 
 
-def build_model() -> nn.Module:
-    args = parse_args()
+def build_model(task: str = "level") -> nn.Module:
+    args = parse_args(task="level")
     from modules.soundnet import SoundNetRaw as SoundNet
 
     ds_fac = np.prod(np.array(args["ds_factors"])) * 4
@@ -135,12 +145,28 @@ if audio is not None:
     audio = torch.from_numpy(audio).type(torch.float32)
     audio = 0.95 * (audio / audio.__abs__().max()).float()
 
-    if "net" not in st.session_state:
-        st.session_state["net"] = build_model()
+    if "fmso_net" not in st.session_state:
+        st.session_state["fmso_net"] = build_model(task="fmso")
+    if "level_net" not in st.session_state:
+        st.session_state["level_net"] = build_model(task="level")
+
+    print("--- level ---")
+    st.text("level from 1 to 8")
     audios = crop_audio(audio)
-    outputs = infer(audios, st.session_state["net"]).numpy()
-    fig = display_outputs(outputs, audio.shape[0] / SAMPLING_RATE, is_half=False)
-    st.pyplot(fig)
-    outputs_half = [(output + 1) // 2 for output in outputs]
-    fig = display_outputs(outputs_half, audio.shape[0] / SAMPLING_RATE, is_half=True)
-    st.pyplot(fig)
+    outputs_level = infer(audios, st.session_state["level_net"], task="level").numpy()
+    fig_level = display_outputs(
+        outputs_level, audio.shape[0] / SAMPLING_RATE, is_half=False, task="level"
+    )
+    st.pyplot(fig_level)
+    st.text("level from 1 to 4 (2계단씩 묶음)")
+    outputs_level_half = [(output + 1) // 2 for output in outputs_level]
+    fig_level_half = display_outputs(
+        outputs_level_half, audio.shape[0] / SAMPLING_RATE, is_half=True, task="level"
+    )
+    st.pyplot(fig_level_half)
+
+    st.text("fmso")
+    print("--- fmso ---")
+    outputs_fmso = infer(audios, st.session_state["fmso_net"], task="fmso").numpy()
+    fig_fmso = display_outputs(outputs_fmso, audio.shape[0] / SAMPLING_RATE, is_half=False, task="fmso")
+    st.pyplot(fig_fmso)
