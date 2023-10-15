@@ -33,7 +33,7 @@ class TAggregate(nn.Module):
         self.fc = nn.Linear(embed_dim, n_classes)
         self.apply(self._init_weights)
 
-    def _init_weights(self, m):
+    def _init_weights(self, m: nn.Module):
         if isinstance(m, nn.Linear):
             with torch.no_grad():
                 if isinstance(m, nn.Linear) and m.bias is not None:
@@ -46,6 +46,11 @@ class TAggregate(nn.Module):
             with torch.no_grad():
                 m.weight.data.normal_(0.0, 0.02)
                 # nn.init.orthogonal_(m.weight)
+
+    @torch.no_grad()
+    def reinit_fc(self):
+        # nn.init.constant_(self.fc.bias, 0)
+        nn.init.constant_(self.fc.weight, self.fc.weight.mean())
 
     def forward(self, x):
         x = x.permute(0, 2, 1).contiguous()
@@ -135,6 +140,9 @@ class SoundNetRaw(nn.Module):
         elif isinstance(m, nn.BatchNorm1d):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
+
+    def reinit_fc(self):
+        self.tf.reinit_fc()
 
     def forward(self, x):
         x = self.start(x)
