@@ -1,15 +1,19 @@
 import yaml
-import numpy as np
 import time
 import argparse
+import numpy as np
 from pathlib import Path
+from typing import Tuple
+
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from utils.helper_funcs import accuracy, mAP
-from datasets.batch_augs import BatchAugs
+
 import scripts.logger as logger
+from datasets.batch_augs import BatchAugs
+from utils.label_converter import LabelConverter
+from utils.helper_funcs import accuracy, mAP, build_sampler
 
 
 def parse_args():
@@ -104,7 +108,7 @@ def check_args(args):
     return args
 
 
-def create_dataset(args):
+def create_dataset(args) -> Tuple[Dataset, ...]:
     ##################################################################################
     # ESC-50
     ##################################################################################
@@ -276,6 +280,9 @@ def train(args):
     else:
         raise ValueError("Wrong dataset in data")
 
+    # create label converter
+    converter = LabelConverter(task=args.task)
+
     #######################
     # Create data loaders #
     #######################
@@ -318,15 +325,22 @@ def train(args):
         )
     else:
         from utils.helper_funcs import collate_fn_keep_dict
-        
+
+        sampler = build_sampler(train_set, args.use_balanced_sampler, args.task)
+
+        if sampler is not None or train_set is None:
+            shuffle = None
+        else:
+            shuffle = True
         train_loader = DataLoader(
             train_set,
             batch_size=args.batch_size,
             num_workers=args.num_workers,
             pin_memory=True,
-            shuffle=False if train_set is None else True,
+            shuffle=shuffle,
             collate_fn=collate_fn_keep_dict,
             drop_last=True,
+            sampler=sampler,
         )
         test_loader = DataLoader(
             test_set,
@@ -390,14 +404,14 @@ def train(args):
 
         ds_fac = np.prod(np.array(args_pretrained["ds_factors"])) * 4
         net = SoundNet(
-            nf=args["nf"],
-            dim_feedforward=args["dim_feedforward"],
-            clip_length=args["seq_len"] // ds_fac,
-            embed_dim=args["emb_dim"],
-            n_layers=args["n_layers"],
-            nhead=args["n_head"],
-            n_classes=args["n_classes"],
-            factors=args["ds_factors"],
+            nf=args.nf,
+            dim_feedforward=args.dim_feedforward,
+            clip_length=args.seq_len // ds_fac,
+            embed_dim=args.emb_dim,
+            n_layers=args.n_layers,
+            nhead=args.n_head,
+            n_classes=args.n_classes,
+            factors=args.ds_factors,
         )
         try:
             net.load_state_dict(net_ext, strict=True)
@@ -416,7 +430,7 @@ def train(args):
         net.tf.pos_embed.data = F.interpolate(net.tf.pos_embed.data.transpose(2, 1), size=nn).transpose(
             2, 1
         )
-        net.tf.fc = torch.nn.Linear(args.emb_dim, args.n_classes)
+        net.reinit_fc()
         net.to(device)
 
     if args.kd_model:
@@ -563,25 +577,6 @@ def train(args):
     dummy_run(net, args.batch_size, args.seq_len)
     net.train()
     skip_scheduler = False
-    from utils.label_converter import LabelConverter
-
-    converter = LabelConverter(task=args.task)
-    def get_target(y, args: argparse.ArgumentParser):
-        if args.dataset == "kpf":
-            if args.task == "level":
-                # TODO
-                return (torch.Tensor(list(map(int, y["level"]))) - 1).type(torch.int64)
-            elif args.task == "fmso":
-                return torch.Tensor(
-                    list(
-                        map(
-                            converter.convert_label_to_model_output,
-                            y["fmso"],
-                        )
-                    )
-                ).type(torch.int64)
-        else:
-            return y
     for epoch in range(1, args.n_epochs + 1):
         if args.use_ddp:
             sampler.set_epoch(epoch)
@@ -604,7 +599,7 @@ def train(args):
         ):
             t_batch = time.time()
             x = x.to(device)
-            y = get_target(y, args)
+            y = converter.get_target(y, args.dataset)
             if args.multilabel:
                 y = [F.one_hot(torch.Tensor(y_i).long(), args.n_classes).sum(dim=0).float() for y_i in y]
                 y = torch.stack(y, dim=0).contiguous().to(device)
@@ -689,7 +684,7 @@ def train(args):
                     acc = 0
                     for i, (x, y) in enumerate(test_loader):
                         x = x.to(device)
-                        y = get_target(y, args)
+                        y = converter.get_target(y, args.dataset)
                         if args.multilabel:
                             y = [
                                 F.one_hot(torch.Tensor(y_i).long(), args.n_classes).sum(dim=0).float()
