@@ -26,12 +26,12 @@ def time_string_to_seconds(timestring):
     except:
         print("timestring", timestring)
         return 0
-    return datetime.timedelta(
-        hours=x.hour, minutes=x.minute, seconds=x.second
-    ).total_seconds()
+    return datetime.timedelta(hours=x.hour, minutes=x.minute, seconds=x.second).total_seconds()
 
 
 class KpfDatasetPage(Dataset):
+    only_row = False
+
     def __init__(
         self,
         root: str,
@@ -178,6 +178,9 @@ class KpfDatasetPage(Dataset):
         path = row.name
         row = row.to_dict()
 
+        if self.only_row:
+            return row
+
         if self.crop is True:
             fmso, interval = self.choose_random_interval(row["time_interval"])
             audio = self.load_with_start_end(
@@ -196,6 +199,19 @@ class KpfDatasetPage(Dataset):
         return audio.unsqueeze(0), row
 
 
+class _ConcatDataset(ConcatDataset):
+    only_row: bool = False
+
+    @property
+    def only_row(self):
+        return self._only_row
+
+    @only_row.setter
+    def only_row(self, value):
+        for dataset in self.datasets:
+            dataset.only_row = value
+
+
 def KpfDataset(
     root: str,
     segment_length: int,
@@ -207,7 +223,7 @@ def KpfDataset(
     split: bool = False,
     seed: int = 0,
 ):
-    concat_dataset = ConcatDataset(
+    concat_dataset = _ConcatDataset(
         [
             KpfDatasetPage(
                 root=root,
@@ -225,9 +241,7 @@ def KpfDataset(
         train_count = int(0.7 * len(concat_dataset))
         test_count = len(concat_dataset) - train_count
         generator = torch.Generator().manual_seed(seed)
-        train_dataset, test_dataset = random_split(
-            concat_dataset, [train_count, test_count], generator
-        )
+        train_dataset, test_dataset = random_split(concat_dataset, [train_count, test_count], generator)
         test_dataset.transforms = None
         return train_dataset, test_dataset
     else:
