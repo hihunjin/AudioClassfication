@@ -1,5 +1,7 @@
 from typing import Union
 
+import torch
+
 
 class LabelConverter:
     fmso_to_model_output = {"LF": 0, "LM": 1, "LS": 2, "LO": 3, "HF": 4, "HM": 5, "HS": 6, "HO": 7, "RP": 0}
@@ -47,6 +49,23 @@ class LabelConverter:
 
     def _convert_model_output_to_level_half_label(self, model_output: int):
         return model_output + 1
+
+    def get_target(self, y, dataset):
+        if dataset == "kpf":
+            if self.task == "level":
+                # TODO
+                return (torch.Tensor(list(map(int, y["level"]))) - 1).type(torch.int64)
+            elif self.task == "fmso":
+                return torch.Tensor(
+                    list(
+                        map(
+                            self.convert_label_to_model_output,
+                            y["fmso"],
+                        )
+                    )
+                ).type(torch.int64)
+        else:
+            return y
 
 
 if __name__ == "__main__":
