@@ -1,9 +1,14 @@
-import torch
-import random
-import torch.nn.functional as F
-import numpy as np
-import torch.distributed as dist
 import copy
+import random
+import numpy as np
+
+import torch
+import torch.nn.functional as F
+import torch.distributed as dist
+from torch.utils.data import Dataset
+from torch.utils.data.sampler import WeightedRandomSampler
+
+
 epsilon = 1e-8
 
 
@@ -13,17 +18,17 @@ class AugBasic:
         self.fs = fs
         self.fft_params = {}
         if fs == 22050:
-            self.fft_params['win_len'] = [512, 1024, 2048]
-            self.fft_params['hop_len'] = [128, 256, 1024]
-            self.fft_params['n_fft'] = [512, 1024, 2048]
+            self.fft_params["win_len"] = [512, 1024, 2048]
+            self.fft_params["hop_len"] = [128, 256, 1024]
+            self.fft_params["n_fft"] = [512, 1024, 2048]
         elif fs == 16000:
-            self.fft_params['win_len'] = [256, 512, 1024]
-            self.fft_params['hop_len'] = [256 // 4, 512 // 4, 1024 // 4]
-            self.fft_params['n_fft'] = [256, 512, 1024]
+            self.fft_params["win_len"] = [256, 512, 1024]
+            self.fft_params["hop_len"] = [256 // 4, 512 // 4, 1024 // 4]
+            self.fft_params["n_fft"] = [256, 512, 1024]
         elif fs == 8000:
-            self.fft_params['win_len'] = [128, 256, 512]
-            self.fft_params['hop_len'] = [32, 64, 128]
-            self.fft_params['n_fft'] = [128, 256, 512]
+            self.fft_params["win_len"] = [128, 256, 512]
+            self.fft_params["hop_len"] = [32, 64, 128]
+            self.fft_params["n_fft"] = [128, 256, 512]
         else:
             raise ValueError
 
@@ -37,10 +42,10 @@ def make_weights_for_balanced_classes(samples, nclasses):
     count = [0] * nclasses
     for item in samples:
         count[item[1]] += 1
-    weight_per_class = [0.] * nclasses
+    weight_per_class = [0.0] * nclasses
     N = float(sum(count))
     for i in range(nclasses):
-        weight_per_class[i] = N/float(count[i])
+        weight_per_class[i] = N / float(count[i])
     weight = [0] * len(samples)
     for idx, val in enumerate(samples):
         weight[idx] = weight_per_class[val[1]]
@@ -49,7 +54,7 @@ def make_weights_for_balanced_classes(samples, nclasses):
 
 def measure_inference_time(model, input, repetitions=300, use_16b=False):
     device = torch.device("cuda")
-    model_= copy.deepcopy(model)
+    model_ = copy.deepcopy(model)
     model_.eval()
     starter = torch.cuda.Event(enable_timing=True)
     ender = torch.cuda.Event(enable_timing=True)
@@ -79,24 +84,25 @@ def measure_inference_time(model, input, repetitions=300, use_16b=False):
     std_syn = np.std(timings)
     return mean_syn, std_syn
 
+
 def collate_fn(batch):
     x = [item[0] for item in batch]
     y = [item[1] for item in batch]
     x = torch.stack(x, dim=0).contiguous()
     return (x, y)
 
+
 def collate_fn_keep_dict(batch):
     if isinstance(batch[0][1], dict):
         x = [item[0] for item in batch]
         x = torch.stack(x, dim=0).contiguous()
-        y = {
-            key: [item[1][key] for item in batch]
-            for key in batch[0][1].keys()
-        }
+        y = {key: [item[1][key] for item in batch] for key in batch[0][1].keys()}
         return (x, y)
     else:
         from torch.utils.data.dataloader import default_collate
+
         return default_collate(batch)
+
 
 def files_to_list(filename):
     """
@@ -122,7 +128,7 @@ def accuracy(output, target, topk=(1,)):
     pred = pred.t()
     with torch.no_grad():
         correct = pred.eq(target.view(1, -1).expand_as(pred))
-    return [correct[:k].view(-1).float().sum(0) * 100. / batch_size for k in topk]
+    return [correct[:k].view(-1).float().sum(0) * 100.0 / batch_size for k in topk]
 
 
 def average_precision(output, target):
@@ -137,7 +143,7 @@ def average_precision(output, target):
     pos_count_[np.logical_not(ind)] = 0
     pp = pos_count_ / total_count_
     precision_at_i_ = np.sum(pp)
-    precision_at_i = precision_at_i_/(total + epsilon)
+    precision_at_i = precision_at_i_ / (total + epsilon)
     return precision_at_i
 
 
@@ -156,17 +162,16 @@ def mAP(targs, preds):
         targets = targs[:, k]
         # compute average precision
         ap[k] = average_precision(scores, targets)
-    return 100*ap.mean()
+    return 100 * ap.mean()
+
 
 def pad_sample_seq(x, n_samples):
     if x.size(-1) >= n_samples:
         max_x_start = x.size(-1) - n_samples
         x_start = random.randint(0, max_x_start)
-        x = x[x_start: x_start + n_samples]
+        x = x[x_start : x_start + n_samples]
     else:
-        x = F.pad(
-            x, (0, n_samples - x.size(-1)), "constant"
-        ).data
+        x = F.pad(x, (0, n_samples - x.size(-1)), "constant").data
     return x
 
 
@@ -174,11 +179,9 @@ def pad_sample_seq_batch(x, n_samples):
     if x.size(0) >= n_samples:
         max_x_start = x.size(0) - n_samples
         x_start = random.randint(0, max_x_start)
-        x = x[:, x_start: x_start + n_samples]
+        x = x[:, x_start : x_start + n_samples]
     else:
-        x = F.pad(
-            x, (0, n_samples - x.size(1)), "constant"
-        ).data
+        x = F.pad(x, (0, n_samples - x.size(1)), "constant").data
     return x
 
 
@@ -193,9 +196,7 @@ def add_weight_decay(model, weight_decay=1e-5, skip_list=()):
             no_decay.append(param)
         else:
             decay.append(param)
-    return [
-        {'params': no_decay, 'weight_decay': 0.},
-        {'params': decay, 'weight_decay': weight_decay}]
+    return [{"params": no_decay, "weight_decay": 0.0}, {"params": decay, "weight_decay": weight_decay}]
 
 
 def _get_bn_param_ids(net):
@@ -225,7 +226,36 @@ def gather_tensor(tensor, n):
     return tensor_list
 
 
-def parse_gpu_ids(gpu_ids): #list of ints
-    s = ''.join(str(x) + ',' for x in gpu_ids)
-    s = s.rstrip().rstrip(',')
+def parse_gpu_ids(gpu_ids):  # list of ints
+    s = "".join(str(x) + "," for x in gpu_ids)
+    s = s.rstrip().rstrip(",")
     return s
+
+
+def build_sampler(dataset: Dataset, use_balanced_sampler: bool, task: str, replacement: bool = True):
+    assert task in ["level", "fmso"], ValueError(f"Wrong task {task} in data")
+    if use_balanced_sampler:
+        dataset.dataset.only_row = True
+
+        weight_dict = {}
+        data_weights = []
+        for row in dataset:
+            y = row[task]
+            if y not in weight_dict.keys():
+                weight_dict[y] = 1
+            else:
+                weight_dict[y] += 1
+
+            data_weights.append(y)
+
+        for key, value in weight_dict.items():
+            weight_dict[key] = 1 / value
+
+        for i in range(len(data_weights)):
+            data_weights[i] = weight_dict[data_weights[i]]
+
+        dataset.dataset.only_row = False
+
+        return WeightedRandomSampler(data_weights, len(data_weights), replacement=replacement)
+    else:
+        return None
