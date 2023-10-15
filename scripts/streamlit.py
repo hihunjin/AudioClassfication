@@ -20,7 +20,7 @@ audio = st.file_uploader("Upload a audio file", type=("mp3", "wav"))
 SAMPLING_RATE = 22050
 seq_len = 114688
 device = "cpu"
-yaml_dir = "/mnt/ebs/dev/AudioClassfication/outputs/kpf/kpf"
+yaml_dir = "/mnt/ebs/dev/AudioClassfication/outputs/kpf/level_pretrained"
 from utils.label_converter import LabelConverter
 
 level_converter = LabelConverter(task="level")
@@ -89,9 +89,9 @@ def display_outputs(outputs, audio_length_seconds, is_half: bool, task: str = "l
 
 def parse_args(task: str = "level", yaml_dir: str = yaml_dir, add_noise: bool = False):
     if task == "level":
-        yaml_dir = "/mnt/ebs/dev/AudioClassfication/outputs/kpf/kpf"
+        yaml_dir = "/mnt/ebs/dev/AudioClassfication/outputs/kpf/level_pretrained"
     else:
-        yaml_dir = "/mnt/ebs/dev/AudioClassfication/outputs/kpf/fmso"
+        yaml_dir = "/mnt/ebs/dev/AudioClassfication/outputs/kpf/fmso_pretrained"
     yaml_dir = Path(yaml_dir)
     with (yaml_dir / Path("args.yml")).open() as f:
         args = yaml.load(f, Loader=yaml.Loader)
