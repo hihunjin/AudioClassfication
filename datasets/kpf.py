@@ -32,19 +32,27 @@ def convert_mp4_to_wav_save(mp4_path, save_directory):
     return out_name
 
 
-JSON_NAME = "_0.0.1.json"
-NEW_JSON_NAME = "_0.0.1_simple.json"
+JSON_NAME = "_{version}.json"
+NEW_JSON_NAME = "_{version}_simple.json"
 URL = "https://tadmins.tunegem.io/voai/{JSON_NAME}?page={page}"  # page: 1 ~ 70
 
 
 @click.command()
 @click.option("--page", default=1, help="page number")
+@click.option("--version", default="0.0.1", help="page number")
 @click.option(
     "--save_directory",
     default="datasets/kpf",
     help="directory to save wav files",
 )
-def main(page: int, save_directory: str):
+def main(
+    page: int,
+    save_directory: str,
+    version: str = "0.0.1",
+):
+    global JSON_NAME, NEW_JSON_NAME
+    JSON_NAME = JSON_NAME.format(version=version)
+    NEW_JSON_NAME = NEW_JSON_NAME.format(version=version)
     save_directory_page = os.path.join(save_directory, f"page{page}")
     os.makedirs(os.path.join(save_directory_page, "wav"), exist_ok=True)
     json_path = None
@@ -53,6 +61,8 @@ def main(page: int, save_directory: str):
     df_list = {}
     for key, val in data.items():
         # download data if not exists
+        # if 62636 >= int(key):
+        #     break
         saved_loc = convert_mp4_to_wav_save(
             val["mp4url"],
             os.path.join(save_directory_page, "wav"),
@@ -62,6 +72,7 @@ def main(page: int, save_directory: str):
             "fmso": list(val["time_interval"].keys())[0],  # FIXME
             "level": val["level"],
             "time_interval": val["time_interval"],
+            "golden_set": {key: value == "y" for key, value in val["golden_set"].items()},
         }
     with open(os.path.join(save_directory_page, NEW_JSON_NAME), "w") as outfile:
         json.dump(df_list, outfile, indent=4, sort_keys=True)

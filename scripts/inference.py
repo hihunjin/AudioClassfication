@@ -2,6 +2,7 @@ import yaml
 import argparse
 from pathlib import Path
 
+import pandas as pd
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -17,6 +18,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--f_res", default=None, type=Path)
     parser.add_argument("--add_noise", default=False, type=bool)
+    parser.add_argument("--json_path", default=None, type=Path("/mnt/ebs/data/all_231027.json"))
     args = parser.parse_args()
     return args
 
@@ -103,6 +105,20 @@ def run():
                                 fold_id=args['fold_id'],
                                 transforms=None)
 
+    elif args["dataset"] == "kpf":
+        from datasets.kpf_dataset import KpfDatasetPath as SoundDataset
+
+        # FIXME
+        json_path = args["json_path"]
+        data_set = SoundDataset(
+            json_path,
+            segment_length=args["seq_len"],
+            sampling_rate=args["sampling_rate"],
+            n_classes=args["n_classes"],
+            transforms=args["augs_signal"] + args["augs_noise"],
+        )
+        data_set.filter({"golden_set": {args["task"]: True}})
+
     elif args['dataset'] == 'speechcommands':
         from datasets.speechcommand_dataset import SpeechCommandsDataset as SoundDataset
         data_set = SoundDataset(args['data_path'],
@@ -142,30 +158,54 @@ def run():
         raise ValueError("check args dataset")
 
 def inference_single_label(net, data_set, args):
-    data_loader = DataLoader(data_set,
-                             batch_size=128,
-                             num_workers=8,
-                             pin_memory=True if torch.cuda.is_available() else False,
-                             shuffle=False)
+    from utils.helper_funcs import collate_fn_keep_dict
+
+    data_loader = DataLoader(
+        data_set,
+        batch_size=args["batch_size"],
+        num_workers=8,
+        pin_memory=True if torch.cuda.is_available() else False,
+        shuffle=False,
+        drop_last=False,
+        collate_fn=collate_fn_keep_dict,
+    )
+
+    # create label converter
+    from utils.label_converter import LabelConverter
+
+    converter = LabelConverter(task=args["task"])
 
     labels = torch.zeros(len(data_loader.dataset), dtype=torch.float32).float()
     preds = torch.zeros(len(data_loader.dataset), args['n_classes'], dtype=torch.float32).float()
     # confusion_matrix = torch.zeros(args['n_classes'], args['n_classes'], dtype=torch.int)
     confusion_matrix = torch.zeros(args['n_classes'], args['n_classes'], dtype=torch.int)
     idx_start = 0
+    results = []
     for i, (x, y) in enumerate(data_loader):
         with torch.no_grad():
             x = x.to(device)
-            y = y.to(device)
+            y_target = converter.get_target(y, args["dataset"])
+            y_target = y_target.to(device)
             pred = net(x)
             _, y_est = torch.max(pred, 1)
-            idx_end = idx_start + y.shape[0]
+            idx_end = idx_start + y_target.shape[0]
             preds[idx_start:idx_end, :] = pred
-            labels[idx_start:idx_end] = y
-            for t, p in zip(y.view(-1), y_est.view(-1)):
+            labels[idx_start:idx_end] = y_target
+            for t, p in zip(y_target.view(-1), y_est.view(-1)):
                 confusion_matrix[t.long(), p.long()] += 1
             print("{}/{}".format(i, len(data_loader)))
+            results.extend(
+                [
+                    {
+                        "path": _path,
+                        "label": converter.convert_model_output_to_label(_y),
+                        "pred": converter.convert_model_output_to_label(_pred),
+                        "time_interval": _time_interval,
+                    } for _path, _y, _pred, _time_interval in zip(y["path"], y_target.tolist(), y_est.tolist(), y["time_interval"])
+                ]
+            )
         idx_start = idx_end
+    pd.DataFrame(results).to_csv(args['f_res'] / f"results_{args['task']}.csv", index=False)
     acc_av = accuracy(preds.detach(), labels.detach(), [1, ])[0]
 
     res = {
@@ -175,17 +215,19 @@ def inference_single_label(net, data_set, args):
         "confusion_matrix": confusion_matrix.tolist(),
     }
     save_json(args['f_res'] / "res.json", res)
+    print(f"result saved at:{args['f_res'] / 'res.json'}")
 
     print("acc:{}".format(np.round(acc_av*100)/100))
     print("cm:{}".format(confusion_matrix.diag().sum() / len(data_loader.dataset)))
     print('***************************************')
-    bad_labels = []
-    for i, c in enumerate(confusion_matrix):
-        i_est = c.argmax(-1)
-        if i != i_est:
-            print('{} {} {}-->{}'.format(i, i_est.item(), data_set.labels[i], data_set.labels[i_est]))
-            bad_labels.append([i, i_est])
-    print(bad_labels)
+    # bad_labels = []
+    # for i, c in enumerate(confusion_matrix):
+    #     i_est = c.argmax(-1)
+    #     if i != i_est:
+    #         print('{} {} {}-->{}'.format(i, i_est.item(), data_set.labels[i], data_set.labels[i_est]))
+    #         bad_labels.append([i, i_est])
+    # print(bad_labels)
+    print("confusion_matrix: \n", *confusion_matrix.tolist(), sep="\n")
 
 
 def inference_multi_label(net, data_set, args):
