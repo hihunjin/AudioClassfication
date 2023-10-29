@@ -1,4 +1,5 @@
 import os
+from typing import List
 import random
 import datetime
 
@@ -29,27 +30,35 @@ def time_string_to_seconds(timestring):
     return datetime.timedelta(hours=x.hour, minutes=x.minute, seconds=x.second).total_seconds()
 
 
-class KpfDatasetPage(Dataset):
+class KpfDatasetPath(Dataset):
     only_row = False
 
     def __init__(
         self,
-        root: str,
-        page: int,
+        json_path: str,
         segment_length: int,
         sampling_rate: int,
         n_classes: int,
         transforms=None,
         crop: bool = True,
     ):
-        mother_path = os.path.join(root, f"page{page}")
-        json_path = os.path.join(mother_path, "_0.0.1_simple.json")
         self.dataframe = self.make_dataframe(json_path)
         self.segment_length = segment_length
         self.sampling_rate = sampling_rate
         self.n_classes = n_classes
         self.transforms = transforms
         self.crop = crop
+
+    def filter(self, criterion: dict) -> pd.DataFrame:
+        indices = pd.Series(True, self.dataframe.index)
+        for key, val in criterion.items():
+            if isinstance(val, dict):
+                for sub_key, sub_val in val.items():
+                    condition = self.dataframe[key].apply(lambda row: row[sub_key] == sub_val)
+                    indices = indices & condition
+            elif isinstance(val, list):
+                indices = indices & (self.dataframe[key].isin(val))
+        self.dataframe = self.dataframe[indices]
 
     def make_dataframe(self, json_path) -> pd.DataFrame:
         data_infos = load_json(json_path)
@@ -177,6 +186,7 @@ class KpfDatasetPage(Dataset):
         row: pd.series = self.dataframe.iloc[index]
         path = row.name
         row = row.to_dict()
+        row["path"] = path
 
         if self.only_row:
             return row
@@ -199,7 +209,20 @@ class KpfDatasetPage(Dataset):
         return audio.unsqueeze(0), row
 
 
+class KpfDatasetPage(KpfDatasetPath):
+    def __init__(
+        self,
+        root: str,
+        page: int,
+        **kwargs,
+    ):
+        mother_path = os.path.join(root, f"page{page}")
+        json_path = os.path.join(mother_path, "_0.0.1_simple.json")
+        super().__init__(json_path=json_path, **kwargs)
+
+
 class _ConcatDataset(ConcatDataset):
+    datasets: List[KpfDatasetPage]
     only_row: bool = False
 
     @property
@@ -211,6 +234,10 @@ class _ConcatDataset(ConcatDataset):
         for dataset in self.datasets:
             dataset.only_row = value
 
+    def filter(self, criterion: dict) -> None:
+        for d_set in self.datasets:
+            d_set.filter(criterion)
+
 
 def KpfDataset(
     root: str,
@@ -221,22 +248,25 @@ def KpfDataset(
     transforms=None,
     crop: bool = True,
     split: bool = False,
+    _filter: dict = None,
     seed: int = 0,
 ):
-    concat_dataset = _ConcatDataset(
-        [
-            KpfDatasetPage(
-                root=root,
-                page=page,
-                segment_length=segment_length,
-                sampling_rate=sampling_rate,
-                n_classes=n_classes,
-                transforms=transforms,
-                crop=crop,
-            )
-            for page in range(1, num_pages + 1)
-        ]
-    )
+    datasets = [
+        KpfDatasetPage(
+            root=root,
+            page=page,
+            segment_length=segment_length,
+            sampling_rate=sampling_rate,
+            n_classes=n_classes,
+            transforms=transforms,
+            crop=crop,
+        )
+        for page in range(1, num_pages + 1)
+    ]
+    if _filter is not None:
+        for dataset in datasets:
+            dataset.filter(_filter)
+    concat_dataset = _ConcatDataset(datasets)
     if split is True:
         train_count = int(0.7 * len(concat_dataset))
         test_count = len(concat_dataset) - train_count
