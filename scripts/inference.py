@@ -18,16 +18,16 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--f_res", default=None, type=Path)
     parser.add_argument("--add_noise", default=False, type=bool)
-    parser.add_argument("--json_path", default=None, type=Path("/mnt/ebs/data/all_231027.json"))
+    parser.add_argument("--infer_json_path", default=Path("/mnt/ebs/data/all_231027.json"), type=Path)
     args = parser.parse_args()
     return args
 
 
 def run():
-    args = parse_args()
-    f_res = args.f_res
-    add_noise = args.add_noise
-    with (args.f_res / Path("args.yml")).open() as f:
+    _args = parse_args()
+    f_res = _args.f_res
+    add_noise = _args.add_noise
+    with (f_res / Path("args.yml")).open() as f:
         args = yaml.load(f, Loader=yaml.Loader)
     try:
         args = vars(args)
@@ -44,6 +44,7 @@ def run():
                 args[k] = v
     args['f_res'] = f_res
     args['add_noise'] = add_noise
+    args["infer_json_path"] = _args.infer_json_path
     with open(args['f_res'] / "args.yml", "w") as f:
         yaml.dump(args, f)
     print(args)
@@ -109,9 +110,9 @@ def run():
         from datasets.kpf_dataset import KpfDatasetPath as SoundDataset
 
         # FIXME
-        json_path = args["json_path"]
+        infer_json_path = args["infer_json_path"]
         data_set = SoundDataset(
-            json_path,
+            infer_json_path,
             segment_length=args["seq_len"],
             sampling_rate=args["sampling_rate"],
             n_classes=args["n_classes"],

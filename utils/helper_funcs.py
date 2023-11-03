@@ -259,3 +259,16 @@ def build_sampler(dataset: Dataset, use_balanced_sampler: bool, task: str, repla
         return WeightedRandomSampler(data_weights, len(data_weights), replacement=replacement)
     else:
         return None
+
+
+class CategoryConverter:
+    to_num_dict =  {'음감': "0", '템포감': "1", '호흡컨트롤': "2", '리듬감': "3", '고음안정감': "4", '표현력': "5", '완성도': "6"}
+    to_str_dict = {v: k for k, v in to_num_dict.items()}
+
+    @classmethod
+    def to_num(cls, category: str):
+        return cls.to_num_dict[category]
+
+    @classmethod
+    def to_str(cls, _num: str):
+        return cls.to_str_dict[_num]

@@ -5,6 +5,8 @@ import json
 import click
 import urllib.request
 
+from utils.helper_funcs import CategoryConverter
+
 
 def load_json(
     json_path: str = None,
@@ -30,6 +32,17 @@ def convert_mp4_to_wav_save(mp4_path, save_directory):
     else:
         print(f"File already exists : {out_name}")
     return out_name
+
+
+def oxn2trn(_v: str):
+    if _v == "O":
+        return True
+    elif _v == "X":
+        return False
+    elif _v == "N":
+        return None
+    else:
+        return None
 
 
 JSON_NAME = "_{version}.json"
@@ -68,14 +81,18 @@ def main(
             os.path.join(save_directory_page, "wav"),
         )
         df_list[key] = {
+            "key": int(key),
             "path": saved_loc,
             "fmso": list(val["time_interval"].keys())[0],  # FIXME
             "level": val["level"],
             "time_interval": val["time_interval"],
             "golden_set": {key: value == "y" for key, value in val["golden_set"].items()},
+            "properties": {CategoryConverter.to_num(_k): oxn2trn(_v)for _k, _v in val["properties"].items()},
         }
     with open(os.path.join(save_directory_page, NEW_JSON_NAME), "w") as outfile:
         json.dump(df_list, outfile, indent=4, sort_keys=True)
+    
+    print(f"<<< saved at: {os.path.join(save_directory_page, NEW_JSON_NAME)} >>>")
 
 
 if __name__ == "__main__":

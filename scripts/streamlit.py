@@ -16,7 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from utils.io import load_wav
 
 st.title("Audio Classification")
-audio = st.file_uploader("Upload a audio file", type=("mp3", "wav"))
+audio = st.file_uploader("Upload a audio file", type=("mp3", "wav", "m4a"))
 SAMPLING_RATE = 22050
 seq_len = 114688
 device = "cpu"
