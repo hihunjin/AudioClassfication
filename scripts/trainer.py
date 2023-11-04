@@ -71,6 +71,7 @@ def parse_args():
     parser.add_argument("--seq_len", default=90112, type=int)
     parser.add_argument("--dataset", default="urban8k", type=str)
     parser.add_argument("--num_pages", default=70, type=int)
+    parser.add_argument("--version", default="0.0.2", type=str)
     """net"""
     parser.add_argument("--task", default="level", type=str)
     parser.add_argument("--n_classes", default=8, type=int)
@@ -138,15 +139,23 @@ def create_dataset(args) -> Tuple[Dataset, ...]:
     ##################################################################################
     if args.dataset == "kpf":
         from datasets.kpf_dataset import KpfDataset as SoundDataset
+        from utils.helper_funcs import CategoryConverter
 
+        if args.task in CategoryConverter.to_num_dict.keys():
+            _filter = {"properties": {CategoryConverter.to_num(args.task): [True, False]}}
+        else:
+            _filter = None
+    
         train_set, test_set = SoundDataset(
             args.data_path,
             segment_length=args.seq_len,
             sampling_rate=args.sampling_rate,
             n_classes=args.n_classes,
+            version=args.version,
             num_pages=args.num_pages,
             transforms=args.augs_signal + args.augs_noise,
             split=True,
+            _filter=_filter,
         )
 
     ##################################################################################
@@ -263,7 +272,7 @@ def train(args):
         args.sampling_rate = 22050
         args.n_classes = 50
     elif args.dataset == "kpf":
-        args.data_path = r"/mnt/ebs/data/kpf"
+        args.data_path = f"/mnt/ebs/data/kpf{args.version}"
         args.sampling_rate = 22050
     elif args.dataset == "audioset":
         args.data_path = r"../data/audioset"
@@ -280,8 +289,17 @@ def train(args):
     else:
         raise ValueError("Wrong dataset in data")
 
-    # create label converter
-    converter = LabelConverter(task=args.task)
+    from utils.helper_funcs import CategoryConverter
+
+    if args.task in CategoryConverter.to_num_dict.keys():
+        args.n_classes = 2
+
+    if args.dataset == "kpf":
+        # create label converter
+        assert args.task in [
+            "fmso", "level", "level_half",
+        ] + list(CategoryConverter.to_num_dict.keys())
+        converter = LabelConverter(task=args.task)
 
     #######################
     # Create data loaders #

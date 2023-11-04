@@ -1,13 +1,12 @@
 import copy
 import random
-import numpy as np
 
+import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.distributed as dist
+import torch.nn.functional as F
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import WeightedRandomSampler
-
 
 epsilon = 1e-8
 
@@ -233,14 +232,20 @@ def parse_gpu_ids(gpu_ids):  # list of ints
 
 
 def build_sampler(dataset: Dataset, use_balanced_sampler: bool, task: str, replacement: bool = True):
-    assert task in ["level", "fmso"], ValueError(f"Wrong task {task} in data")
+    # assert task in ["level", "fmso"], ValueError(f"Wrong task {task} in data")
     if use_balanced_sampler:
+        from utils.helper_funcs import CategoryConverter
+
         dataset.dataset.only_row = True
 
         weight_dict = {}
         data_weights = []
         for row in dataset:
-            y = row[task]
+            if task in ["level", "fmso"]:
+                y = row[task]
+            else:
+                num_task = CategoryConverter.to_num(task)
+                y = row["properties"][num_task]
             if y not in weight_dict.keys():
                 weight_dict[y] = 1
             else:

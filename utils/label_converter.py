@@ -2,6 +2,8 @@ from typing import Union
 
 import torch
 
+from utils.helper_funcs import CategoryConverter
+
 
 class LabelConverter:
     fmso_to_model_output = {"LF": 0, "LM": 1, "LS": 2, "LO": 3, "HF": 4, "HM": 5, "HS": 6, "HO": 7, "RP": 0}
@@ -11,7 +13,7 @@ class LabelConverter:
             "level",
             "level_half",
             "fmso",
-        ], f"task: {task} must be one of ['level', 'level_half', 'fmso']"
+        ] + list(CategoryConverter.to_num_dict.keys())
         self.task = task
 
     def convert_label_to_model_output(self, label: Union[str, int]):
@@ -63,6 +65,10 @@ class LabelConverter:
                             y["fmso"],
                         )
                     )
+                ).type(torch.int64)
+            elif self.task in CategoryConverter.to_num_dict.keys():
+                return torch.Tensor(
+                    [i[CategoryConverter.to_num(self.task)] for i in y["properties"]]
                 ).type(torch.int64)
         else:
             return y
