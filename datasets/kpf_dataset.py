@@ -54,7 +54,10 @@ class KpfDatasetPath(Dataset):
         for key, val in criterion.items():
             if isinstance(val, dict):
                 for sub_key, sub_val in val.items():
-                    condition = self.dataframe[key].apply(lambda row: row[sub_key] == sub_val)
+                    if isinstance(sub_val, list):
+                        condition = self.dataframe[key].apply(lambda row: row[sub_key] in sub_val)
+                    else:
+                        condition = self.dataframe[key].apply(lambda row: row[sub_key] == sub_val)
                     indices = indices & condition
             elif isinstance(val, list):
                 indices = indices & (self.dataframe[key].isin(val))
@@ -214,10 +217,11 @@ class KpfDatasetPage(KpfDatasetPath):
         self,
         root: str,
         page: int,
+        version: str = "0.0.1",
         **kwargs,
     ):
         mother_path = os.path.join(root, f"page{page}")
-        json_path = os.path.join(mother_path, "_0.0.1_simple.json")
+        json_path = os.path.join(mother_path, f"_{version}_simple.json")
         super().__init__(json_path=json_path, **kwargs)
 
 
@@ -245,6 +249,7 @@ def KpfDataset(
     sampling_rate: int,
     n_classes: int,
     num_pages: int,
+    version: str = "0.0.1",
     transforms=None,
     crop: bool = True,
     split: bool = False,
@@ -255,6 +260,7 @@ def KpfDataset(
         KpfDatasetPage(
             root=root,
             page=page,
+            version=version,
             segment_length=segment_length,
             sampling_rate=sampling_rate,
             n_classes=n_classes,
