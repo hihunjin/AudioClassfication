@@ -1,19 +1,19 @@
-import yaml
-import time
 import argparse
-import numpy as np
+import time
 from pathlib import Path
 from typing import Tuple
 
+import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
+import yaml
+from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 
 import scripts.logger as logger
 from datasets.batch_augs import BatchAugs
+from utils.helper_funcs import CategoryConverter, accuracy, build_sampler, mAP
 from utils.label_converter import LabelConverter
-from utils.helper_funcs import accuracy, mAP, build_sampler
 
 
 def parse_args():
@@ -139,12 +139,18 @@ def create_dataset(args) -> Tuple[Dataset, ...]:
     ##################################################################################
     if args.dataset == "kpf":
         from datasets.kpf_dataset import KpfDataset as SoundDataset
-        from utils.helper_funcs import CategoryConverter
 
+        _filter = [{"golden_set": {"fmso": False, "level": False}}]
         if args.task in CategoryConverter.to_num_dict.keys():
-            _filter = {"properties": {CategoryConverter.to_num(args.task): [True, False]}}
+            _filter.append(
+                {
+                    "properties": {
+                        CategoryConverter.to_num(args.task): [True, False],
+                    },
+                },
+            )
         else:
-            _filter = None
+            pass
     
         train_set, test_set = SoundDataset(
             args.data_path,
@@ -154,15 +160,16 @@ def create_dataset(args) -> Tuple[Dataset, ...]:
             version=args.version,
             num_pages=args.num_pages,
             transforms=args.augs_signal + args.augs_noise,
-            split=True,
             _filter=_filter,
+            split=True,
         )
 
     ##################################################################################
     # SpeechCommands V2-35
     ##################################################################################
     elif args.dataset == "speechcommands":
-        from datasets.speechcommand_dataset import SpeechCommandsDataset as SoundDataset
+        from datasets.speechcommand_dataset import \
+            SpeechCommandsDataset as SoundDataset
 
         train_set = SoundDataset(
             args.data_path,
@@ -289,8 +296,6 @@ def train(args):
     else:
         raise ValueError("Wrong dataset in data")
 
-    from utils.helper_funcs import CategoryConverter
-
     if args.task in CategoryConverter.to_num_dict.keys():
         args.n_classes = 2
 
@@ -305,6 +310,8 @@ def train(args):
     # Create data loaders #
     #######################
     train_set, test_set = create_dataset(args)
+    args.num_train = len(train_set)
+    args.num_test = len(test_set)
 
     if args.multilabel:
         from utils.helper_funcs import collate_fn
