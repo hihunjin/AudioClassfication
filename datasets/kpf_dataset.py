@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Union
 import random
 import datetime
 
@@ -11,6 +11,9 @@ import torch.nn.functional as F
 
 from utils.io import load_json, load_wav
 from datasets.audio_augs import AudioAugs
+
+
+FilterType = Union[dict, list]
 
 
 def time_string_to_frame_number(string, sr=16000):
@@ -49,18 +52,21 @@ class KpfDatasetPath(Dataset):
         self.transforms = transforms
         self.crop = crop
 
-    def filter(self, criterion: dict) -> pd.DataFrame:
+    def filter(self, criterion: FilterType) -> pd.DataFrame:
         indices = pd.Series(True, self.dataframe.index)
-        for key, val in criterion.items():
-            if isinstance(val, dict):
-                for sub_key, sub_val in val.items():
-                    if isinstance(sub_val, list):
-                        condition = self.dataframe[key].apply(lambda row: row[sub_key] in sub_val)
-                    else:
-                        condition = self.dataframe[key].apply(lambda row: row[sub_key] == sub_val)
-                    indices = indices & condition
-            elif isinstance(val, list):
-                indices = indices & (self.dataframe[key].isin(val))
+        if isinstance(criterion, dict):
+            criterion = [criterion]
+        for _criterion in criterion:
+            for key, val in _criterion.items():
+                if isinstance(val, dict):
+                    for sub_key, sub_val in val.items():
+                        if isinstance(sub_val, list):
+                            condition = self.dataframe[key].apply(lambda row: row[sub_key] in sub_val)
+                        else:
+                            condition = self.dataframe[key].apply(lambda row: row[sub_key] == sub_val)
+                        indices = indices & condition
+                elif isinstance(val, list):
+                    indices = indices & (self.dataframe[key].isin(val))
         self.dataframe = self.dataframe[indices]
 
     def make_dataframe(self, json_path) -> pd.DataFrame:
@@ -238,7 +244,7 @@ class _ConcatDataset(ConcatDataset):
         for dataset in self.datasets:
             dataset.only_row = value
 
-    def filter(self, criterion: dict) -> None:
+    def filter(self, criterion: FilterType) -> None:
         for d_set in self.datasets:
             d_set.filter(criterion)
 
@@ -252,8 +258,8 @@ def KpfDataset(
     version: str = "0.0.1",
     transforms=None,
     crop: bool = True,
+    _filter: FilterType = None,
     split: bool = False,
-    _filter: dict = None,
     seed: int = 0,
 ):
     datasets = [
