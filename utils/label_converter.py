@@ -67,9 +67,14 @@ class LabelConverter:
                     )
                 ).type(torch.int64)
             elif self.task in CategoryConverter.to_num_dict.keys():
-                return torch.Tensor(
-                    [i[CategoryConverter.to_num(self.task)] for i in y["properties"]]
-                ).type(torch.int64)
+                if self.task not in ["완성도", "표현력"]:
+                    return torch.Tensor(
+                        [i[CategoryConverter.to_num(self.task)] for i in y["properties"]]
+                    ).type(torch.int64)
+                else:
+                    return torch.Tensor(
+                        [i[CategoryConverter.to_num(self.task)] == True for i in y["properties"]]
+                    ).type(torch.int64)
         else:
             return y
 

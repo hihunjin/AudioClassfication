@@ -142,13 +142,23 @@ def create_dataset(args) -> Tuple[Dataset, ...]:
 
         _filter = [{"golden_set": {"fmso": False, "level": False}}]
         if args.task in CategoryConverter.to_num_dict.keys():
-            _filter.append(
-                {
-                    "properties": {
-                        CategoryConverter.to_num(args.task): [True, False],
+            if args.task not in ["완성도", "표현력"]:
+                _filter.append(
+                    {
+                        "properties": {
+                            CategoryConverter.to_num(args.task): [True, False],
+                        },
                     },
-                },
-            )
+                )
+            else:
+                _filter.append(
+                    {
+                        "properties": {
+                            CategoryConverter.to_num(args.task): [True, False, None],
+                        },
+                    },
+                )
+
         else:
             pass
     
